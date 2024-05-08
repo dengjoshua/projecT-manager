@@ -72,6 +72,12 @@ def find_project(projects, project_id):
            return project
     return None
 
+@app.get("/get_user_details")
+async def get_db(user: User = Depends(get_current_user)):
+    user = await db.find_one({ "email": user["email"] })
+    user["_id"] = str(user["_id"])
+    return { "username":user["username"], "email": user["email"] }
+
 @app.get("/get_projects")
 async def get_db(user: User = Depends(get_current_user)):
     user = await db.find_one({ "email": user["email"] })
@@ -151,11 +157,15 @@ async def create_project(project: ProjectCreate, user: User = Depends(get_curren
     tags = extract_tags(tasks)
     new_project = { "project_id": project_id ,"name": project.name, "description": project.description, "priority": project.priority,"finish": False, "tasks": tasks,"tags": tags ,"date_start": project.start_date, "date_end": project.end_date}
    
-    await db.update_one(
+    user_profile = await db.update_one(
             {"email": user["email"]},
-            {"$push": {"projects": new_project}}
+            {"$push": {"projects": new_project}},
+            return_document = ReturnDocument.AFTER
         )
-    return user["projects"]
+    if not user_profile:
+        raise HTTPException(status_code=404, detail="Project not found or no permission")
+
+    return new_project
 
 
 @app.put("/create_task/{project_id}")
