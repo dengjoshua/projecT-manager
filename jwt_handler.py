@@ -1,6 +1,6 @@
 import time
 import jwt
-# from decouple import config
+
 
 JWT_SECRET = "1234"
 JWT_ALGORITHM = "HS256"

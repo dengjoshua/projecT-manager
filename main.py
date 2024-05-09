@@ -16,7 +16,7 @@ from schemas import User, ProjectCreate, TaskCreate
 from jwt_handler import jwt_decode
 from routes import router, oauth2_scheme
 from datetime import datetime
-
+from starlette.middleware.sessions import SessionMiddleware
 
 
 load_dotenv()
@@ -105,7 +105,6 @@ def generate_prompt(description, start_date, end_date, priority):
             "Set up the project using create-react-app or Vite and install necessary dependencies such as react-router-dom for routing, Firebase or other backend service for user authentication and data storage.",
         "finished": False,
         "date": "2024-04-24T00:00:00",
-        "time": "7:30 - 9:30 AM",
         "tag": {{ "name": "Backend", "color": "bg-green-200" }}
     }}
     Ensure that the tasks are stored in an array and your response should only contain the array and no other text.
@@ -160,12 +159,11 @@ async def create_project(project: ProjectCreate, user: User = Depends(get_curren
     user_profile = await db.update_one(
             {"email": user["email"]},
             {"$push": {"projects": new_project}},
-            return_document = ReturnDocument.AFTER
         )
     if not user_profile:
         raise HTTPException(status_code=404, detail="Project not found or no permission")
 
-    return new_project
+    return { "message": "Successfully created the project." }
 
 
 @app.put("/create_task/{project_id}")
@@ -178,7 +176,6 @@ async def create_task(task: TaskCreate, project_id: str, user: User = Depends(ge
         "description": task.description,
         "finished": False,
         "date": converted_date,
-        "time": task.time,
         "tag": {"name": task.tag.name, "color": task.tag.color}
     }
 
@@ -195,6 +192,20 @@ async def create_task(task: TaskCreate, project_id: str, user: User = Depends(ge
         raise HTTPException(status_code=404, detail="Project not found or no permission")
 
     return new_task
+
+
+@app.delete("/delete_task/{project_id}/{task_id}")
+async def delete_task(project_id: str, task_id: str, user: User = Depends(get_current_user)):
+    result = await db.update_one(
+        {"email": user["email"], "projects.project_id": project_id},
+        {"$pull": {"projects.$.tasks": {"task_id": task_id}}}
+    )
+
+    if result.modified_count == 0:
+        raise HTTPException(status_code=404, detail="Task not found or could not be deleted")
+
+    return {"message": "Task deleted successfully"}
+
 
 
 

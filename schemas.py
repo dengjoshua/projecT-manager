@@ -14,7 +14,6 @@ class Task(BaseModel):
     finished: bool = False
     date: datetime = Field()
     tag: Optional[Tag] = None
-    time: str
 
 class Project(BaseModel):
     name: str
@@ -31,16 +30,19 @@ class User(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid4()))
     username: str
     email: EmailStr
-    hashed_password: str
+    hashed_password: Optional[str] = None
+    google_token: Optional[str] = None
     projects: List[Project] = []
+    auth_type: str
 
+class GoogleLoginData(BaseModel):
+    token: str
 
 class TaskCreate(BaseModel):
     name: str
     description: str
     date: str
     tag: Optional[Tag] = None
-    time: str
 
 
 class ProjectCreate(BaseModel):
