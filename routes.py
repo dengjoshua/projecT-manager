@@ -9,7 +9,6 @@ from schemas import UserLogin, UserCreate, GoogleLoginData
 from jwt_handler import sign_jwt
 from google_verify import verify_google_token
 
-
 router = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
