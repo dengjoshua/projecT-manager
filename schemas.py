@@ -1,71 +1,98 @@
+from pydantic import BaseModel, Field, validator
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field
-from uuid import uuid4
 from datetime import datetime
+from uuid import UUID
 
-class Tag(BaseModel):
+class TaskBase(BaseModel):
     name: str
-    color: str
-
-class Task(BaseModel):
-    name: str
-    id: str = Field(default_factory=lambda: str(uuid4()))
-    description: str
+    description: Optional[str] = None
     finished: bool = False
-    date: datetime = Field()
-    tag: Optional[Tag] = None
+    date: datetime = Field(default_factory=datetime.utcnow)
+    tag_id: Optional[int] = None
+    assignee_id: Optional[UUID] = None
 
-class Project(BaseModel):
+    @validator("date", pre=True, always=True)
+    def validate_date(cls, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return datetime.fromisoformat(value)
+        return value
+
+class TaskCreate(TaskBase):
+    pass
+
+class TaskUpdate(TaskBase):
+    pass
+
+class Task(TaskBase):
+    id: UUID
+    project_id: UUID
+    
+    class Config:
+        from_attributes = True
+
+class ProjectBase(BaseModel):
     name: str
+    description: Optional[str] = None
+    finished: bool = False
+    priority: str
+    date_start: datetime = Field(default_factory=datetime.utcnow)
+    date_end: Optional[datetime] = None
+    tag_id: Optional[int] = None
+
+    @validator("date_start", "date_end", pre=True, always=True)
+    def validate_dates(cls, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return datetime.fromisoformat(value)
+        return value
+
+class ProjectCreate(ProjectBase):
+    pass
+
+class ProjectUpdate(ProjectBase):
+    pass
+
+class Project(ProjectBase):
+    id: UUID
+    owner_id: UUID
     tasks: List[Task] = []
-    project_id: str = Field(default_factory=lambda: str(uuid4()))
-    finished: bool = False
-    description: str
-    priority: str
-    date_start: datetime = Field()
-    date_end: datetime = Field()
-    tags: List[Tag] = []
 
-class User(BaseModel):
-    id: str = Field(default_factory=lambda: str(uuid4()))
+    class Config:
+        from_attributes = True
+
+class UserBase(BaseModel):
     username: str
-    email: EmailStr
-    hashed_password: Optional[str] = None
-    google_token: Optional[str] = None
-    projects: List[Project] = []
-    auth_type: str
-
-class GoogleLoginData(BaseModel):
-    token: str
-
-class TaskCreate(BaseModel):
-    name: str
-    description: str
-    date: str
-    tag: Optional[Tag] = None
-
-
-class ProjectCreate(BaseModel):
-    name: str
-    description: str
-    priority: str
-    start_date: str
-    end_date: str
-
-class ProjectUpdate(BaseModel):
-    name: Optional[str]
-    description: Optional[str]
-    end_date: Optional[datetime]
-    finished: Optional[bool]
-
-class ProjectDelete(BaseModel):
-    project_id: str
-
-class UserCreate(BaseModel):
-    username: str
-    email: EmailStr
-    password: str
-
-class UserLogin(BaseModel):
     email: str
-    password: str
+
+class UserCreate(UserBase):
+    password: Optional[str]
+
+class UserUpdate(UserBase):
+    username: Optional[str] = None
+    email: Optional[str] = None
+    auth_type: Optional[str] = None
+    gender: Optional[str] = None
+    DOB: Optional[datetime] = None
+    image_url: Optional[str] = None
+
+    @validator("DOB", pre=True, always=True)
+    def validate_dob(cls, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return datetime.fromisoformat(value)
+        return value
+
+class User(UserBase):
+    id: UUID
+    projects: List[Project] = []
+    assigned_tasks: List[Task] = []
+
+    class Config:
+        from_attributes = True
