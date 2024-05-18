@@ -7,27 +7,19 @@ from database import Base
 class User(Base):
     __tablename__ = 'users'
     
-    id = Column(String, primary_key=True, default=uuid4)
-    username = Column(String(50), unique=True, index=True)
+    id = Column(String, primary_key=True)
+    name = Column(String(50), unique=True, index=True)
     email = Column(String(255), unique=True, index=True)
     hashed_password = Column(String(255), nullable=True)
     google_token = Column(String(255), nullable=True)
     auth_type = Column(String(20))
-    gender = Column(String(10), nullable=True)
-    DOB = Column(DateTime, nullable=True)
-    image_url = Column(String(255), nullable=True)
+    gender = Column(String(10), nullable=True, default="")
+    DOB = Column(DateTime, nullable=True, default=None)
+    picture = Column(String(255), nullable=True, default="")
     
     projects = relationship("Project", back_populates="owner")
     assigned_tasks = relationship("Task", back_populates="assignee")
 
-class Tag(Base):
-    __tablename__ = 'tags'
-    
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(50), nullable=False)
-    color = Column(String(50), nullable=False)
-    
-    tasks = relationship("Task", back_populates="tag")
 
 class Project(Base):
     __tablename__ = 'projects'
@@ -44,8 +36,7 @@ class Project(Base):
     owner = relationship("User", back_populates="projects")
     
     tasks = relationship("Task", back_populates="project")
-    tag_id = Column(Integer, ForeignKey('tags.id'))
-    tag = relationship("Tag")
+    tags = relationship("Tag", back_populates="project")
 
 class Task(Base):
     __tablename__ = 'tasks'
@@ -59,8 +50,18 @@ class Task(Base):
     project_id = Column(String, ForeignKey('projects.id'))
     project = relationship("Project", back_populates="tasks")
     
-    tag_id = Column(Integer, ForeignKey('tags.id'))
+    tag_id = Column(String, ForeignKey('tags.id'))
     tag = relationship("Tag", back_populates="tasks")
     
     assignee_id = Column(String, ForeignKey('users.id'))
     assignee = relationship("User", back_populates="assigned_tasks")
+
+class Tag(Base):
+    __tablename__ = 'tags'
+    
+    id = Column(String, primary_key=True, default=uuid4)
+    name = Column(String(50), nullable=False)
+    color = Column(String(50), nullable=False)
+    project_id = Column(String, ForeignKey('projects.id'))
+    project = relationship("Project", back_populates="tags")
+    tasks = relationship("Task", back_populates="tag")

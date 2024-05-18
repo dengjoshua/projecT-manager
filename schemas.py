@@ -33,6 +33,10 @@ class Task(TaskBase):
     class Config:
         from_attributes = True
 
+class TagCreate(BaseModel):
+    name: str
+    color: str
+
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
@@ -40,7 +44,6 @@ class ProjectBase(BaseModel):
     priority: str
     date_start: datetime = Field(default_factory=datetime.utcnow)
     date_end: Optional[datetime] = None
-    tag_id: Optional[int] = None
 
     @validator("date_start", "date_end", pre=True, always=True)
     def validate_dates(cls, value):
@@ -66,19 +69,23 @@ class Project(ProjectBase):
         from_attributes = True
 
 class UserBase(BaseModel):
-    username: str
+    name: str
     email: str
 
 class UserCreate(UserBase):
-    password: Optional[str]
+    password: Optional[str] = None
+
+class UserLogin(BaseModel):
+    email:str
+    password: str
 
 class UserUpdate(UserBase):
-    username: Optional[str] = None
+    name: Optional[str] = None
     email: Optional[str] = None
     auth_type: Optional[str] = None
     gender: Optional[str] = None
     DOB: Optional[datetime] = None
-    image_url: Optional[str] = None
+    picture: Optional[str] = None
 
     @validator("DOB", pre=True, always=True)
     def validate_dob(cls, value):
@@ -90,9 +97,25 @@ class UserUpdate(UserBase):
         return value
 
 class User(UserBase):
-    id: UUID
+    id: str
     projects: List[Project] = []
     assigned_tasks: List[Task] = []
 
     class Config:
         from_attributes = True
+
+class UserResponse(BaseModel):
+    id: str
+    name: str
+    email: str
+    gender: Optional[str] = ""
+    DOB: Optional[datetime] = None
+    picture: Optional[str] = ""
+    projects: List[int] = Field(default_factory=list)
+    assigned_tasks: List[int] = Field(default_factory=list)
+
+    class Config:
+        from_attributes = True
+
+class GoogleLoginData(BaseModel):
+    token: str
