@@ -89,9 +89,27 @@ def login(user: schemas.UserLogin, db: Session = Depends(get_db)):
 @users_routes.get("/users")
 def get_users(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     users = db.query(User).all()
-    return users
+    users_with_projects = []
 
-@users_routes.get("/users/{user_id}", response_model=schemas.UserResponse)
+    for user in users:
+        projects = user.projects
+        tasks = user.assigned_tasks
+
+        user_data = {
+            'name':user.name,
+            'id':user.id,
+            'email': user.email,
+            'gender': user.gender,
+            'DOB': user.DOB,
+            'picture': user.picture,
+            'projects': projects if projects else None,
+            'tasks':tasks if tasks else None
+        }
+        users_with_projects.append(user_data)
+
+    return users_with_projects
+
+@users_routes.get("/user_details", response_model=schemas.UserResponse)
 def get_user(user: User = Depends(get_current_user)):
     user_dict = {
         "id": user.id,
@@ -99,9 +117,7 @@ def get_user(user: User = Depends(get_current_user)):
         "email": user.email,
         "gender": user.gender if user.gender is not None else "",
         "DOB": user.DOB.isoformat() if user.DOB else None,
-        "picture": user.picture if user.picture is not None else "",
-        "projects": [project.id for project in user.projects],
-        "assigned_tasks": [task.id for task in user.assigned_tasks]
+        "picture": user.picture if user.picture is not None else ""
     }
     return user_dict
 

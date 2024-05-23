@@ -21,10 +21,23 @@ class TaskBase(BaseModel):
         return value
 
 class TaskCreate(TaskBase):
-    pass
+    tag_name: Optional[str] = None
+    tag_color: Optional[str] = None
 
 class TaskUpdate(TaskBase):
-    pass
+    name: Optional[str] = None
+    description: Optional[str] = None
+    finished: Optional[bool] = None
+    date: Optional[str] = None
+
+    @validator("date", pre=True, always=True)
+    def validate_date(cls, value):
+        if isinstance(value, str):
+            try:
+                return datetime.strptime(value, "%Y-%m-%d")
+            except ValueError:
+                return datetime.fromisoformat(value)
+        return value
 
 class Task(TaskBase):
     id: UUID
