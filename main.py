@@ -2,6 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 import models
 from typing import List
+import os
 from database import engine, get_db
 from uuid import UUID
 from dotenv import load_dotenv
@@ -13,18 +14,14 @@ from modal import App, asgi_app, Image, Secret
 
 models.Base.metadata.create_all(bind=engine)
 
-app = App("project-manager")
+
 image = Image.debian_slim().pip_install_from_requirements("requirements.txt")
+
+app = App("project-manager", image=image, secrets=[Secret.from_dotenv()])
 
 web_app = FastAPI()
 
-origins = [
-    "http://localhost",
-    "http://localhost:5173",
-    "http://localhost:3000",
-    "https://project-manager-git-version14-deng-joshuas-projects.vercel.app/"
-    "https://project-manager-git-version14-deng-joshuas-projects.vercel.app/"
-]
+origins = ["*"]
 
 web_app.add_middleware(
     CORSMiddleware,
@@ -34,16 +31,12 @@ web_app.add_middleware(
     allow_headers=["*"],
 )
 
-
 web_app.include_router(users_routes)
 web_app.include_router(projects_routes)
 web_app.include_router(tasks_routes)
 
-@web_app.get("/home")
-def test():
-    return { "Testing the app." }
 
-@app.function(image=image, secrets=[Secret.from_name("my-custom-secret")])
+@app.function(image=image)
 @asgi_app()
 def fastapi_app():
     return web_app
