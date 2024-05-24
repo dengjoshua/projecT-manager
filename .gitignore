@@ -2,4 +2,4 @@
 database.db
 safe_old_code.py
 __pycache__/
-
+*.pyc
