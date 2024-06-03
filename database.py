@@ -7,13 +7,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 engine = create_engine(
-    os.environ["SQLALCHEMY_DATABASE_URL"], connect_args={"check_same_thread": False}
+    os.getenv("SUPABASE_DATABASE_URL")
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
-
 
 def get_db():
     db = SessionLocal()

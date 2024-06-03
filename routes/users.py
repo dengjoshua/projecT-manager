@@ -4,7 +4,6 @@ from passlib.context import CryptContext
 from uuid import uuid4
 from sqlalchemy.orm import Session
 from jwt_handler import jwt_decode
-from db import db 
 import schemas
 from jwt_handler import sign_jwt
 from google_verify import verify_google_token

@@ -115,6 +115,14 @@ def create_tasks(description, start_date, end_date, priority, project_id, assign
         try:
             tasks = json.loads(tasks_json)
             tags = extract_tags(tasks)
+            for tag_data in tags:
+                tag = Tag(
+                    id=tag_data["id"],
+                    name=tag_data["name"],
+                    color=tag_data["color"],
+                    project_id=tag_data["project_id"]
+                )
+                db.add(tag)
             for task_data in tasks:
                 task_date = datetime.fromisoformat(task_data["date"])
                 task = Task(
@@ -128,14 +136,6 @@ def create_tasks(description, start_date, end_date, priority, project_id, assign
                     date=task_date
                 )
                 db.add(task)
-            for tag_data in tags:
-                tag = Tag(
-                    id=tag_data["id"],
-                    name=tag_data["name"],
-                    color=tag_data["color"],
-                    project_id=tag_data["project_id"]
-                )
-                db.add(tag)
             db.commit()
             return
         
@@ -167,6 +167,8 @@ def delete_project(project_id: str, user: User = Depends(get_current_user), db: 
         raise HTTPException(status_code=404, detail="Invalid user credentials")
     
     project = db.query(Project).filter(Project.id == project_id).first()
+    db.query(Task).filter(Task.project_id == project_id).delete(synchronize_session=False)
+    db.query(Tag).filter(Tag.project_id == project_id).delete(synchronize_session=False)
 
     db.delete(project)
     db.commit()
