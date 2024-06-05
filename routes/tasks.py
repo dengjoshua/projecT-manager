@@ -40,8 +40,6 @@ def create_tasks(project_id: str, task: schemas.TaskCreate, user: User = Depends
 
     task_model = Task(id=task_id, name=task.name, date=task.date, description=task.description, project_id=project_id, assignee_id=user.id, finished=False, tag_id=tag_id)
 
-   
-
     db.add(task_model)
     db.commit()
     return organize_task(task_id=task_id, db=db)

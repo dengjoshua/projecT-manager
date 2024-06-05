@@ -28,7 +28,7 @@ class TaskUpdate(TaskBase):
     name: Optional[str] = None
     description: Optional[str] = None
     finished: Optional[bool] = None
-    date: Optional[str] = None
+    date: Optional[datetime] = None
 
     @validator("date", pre=True, always=True)
     def validate_date(cls, value):
