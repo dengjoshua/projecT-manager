@@ -50,7 +50,7 @@ async def send_in_background(email: schemas.EmailSchema):
     except Exception as e:
         print(f"Failed to send email: {e}")
 
-    return JSONResponse(status_code=200, content={"message": "email has been sent"})
+    return JSONResponse(status_code=200, content={"message": "Email has been sent"})
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     auth_token = jwt_decode(token)
