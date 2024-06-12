@@ -1,19 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-from typing import List
-import os
-from database import engine, Base, get_db
-from uuid import UUID
-from dotenv import load_dotenv
+from fastapi import FastAPI
+from database import engine, Base
 from fastapi.middleware.cors import CORSMiddleware
 from routes.users import users_routes
 from routes.projects import projects_routes
 from routes.tasks import tasks_routes
 from modal import App, asgi_app, Image, Secret
-from models import User
+
 
 Base.metadata.create_all(bind=engine)
-
 
 image = Image.debian_slim().pip_install_from_requirements("requirements.txt")
 

@@ -7,14 +7,50 @@ from jwt_handler import jwt_decode
 import schemas
 from jwt_handler import sign_jwt
 from google_verify import verify_google_token
-from models import User
+from models import User, Task, Project
 from database import get_db
-import json
+from dotenv import load_dotenv
+import os
+import smtplib
+from fastapi.responses import JSONResponse
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+load_dotenv()
 
 users_routes = APIRouter()
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth_token")
+
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+
+@users_routes.post("/send_email")
+async def send_in_background(email: schemas.EmailSchema):
+    try:
+        msg = MIMEMultipart("alternative")
+        msg['From'] = email.sender
+        msg['To'] = email.receiver
+        msg['Subject'] = email.subject
+
+        plain_text = MIMEText(email.message, 'plain')
+        html_text = MIMEText(f"<html><body>{email.message}</body></html>", 'html')
+
+        msg.attach(plain_text)
+        msg.attach(html_text)
+
+        server = smtplib.SMTP("smtp.gmail.com", 587)
+        server.starttls()
+        server.login(email.sender, EMAIL_PASSWORD)
+        server.sendmail(email.sender, email.receiver, msg.as_string())
+        server.quit()
+
+        print(f"Email sent to {email.receiver}")
+
+    except Exception as e:
+        print(f"Failed to send email: {e}")
+
+    return JSONResponse(status_code=200, content={"message": "email has been sent"})
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     auth_token = jwt_decode(token)
@@ -91,37 +127,53 @@ def get_users(user: User = Depends(get_current_user), db: Session = Depends(get_
     users_with_projects = []
 
     for user in users:
-        projects = user.projects
-        tasks = user.assigned_tasks
+        projects = []
+        for project in user.assigned_projects:
+            projects.append({
+                'id': project.id,
+                'name': project.name
+            })
+
+        tasks = []
+        for task in user.assigned_tasks:
+            tasks.append({
+                'id': task.id,
+                'name': task.name
+            })
 
         user_data = {
-            'name':user.name,
-            'id':user.id,
+            'name': user.name,
+            'id': user.id,
             'email': user.email,
             'gender': user.gender,
             'DOB': user.DOB,
             'picture': user.picture,
             'projects': projects if projects else None,
-            'tasks':tasks if tasks else None
+            'tasks': tasks if tasks else None
         }
         users_with_projects.append(user_data)
 
     return users_with_projects
 
 @users_routes.get("/user_details", response_model=schemas.UserResponse)
-def get_user(user: User = Depends(get_current_user)):
+def get_user_details(user: User = Depends(get_current_user)):
+    projects = [{'id': project.id, 'name': project.name} for project in user.assigned_projects]
+    tasks = [{'id': task.id, 'name': task.name} for task in user.assigned_tasks]
+
     user_dict = {
         "id": user.id,
         "name": user.name,
         "email": user.email,
         "gender": user.gender if user.gender is not None else "",
         "DOB": user.DOB.isoformat() if user.DOB else None,
-        "picture": user.picture if user.picture is not None else ""
+        "picture": user.picture if user.picture is not None else "",
+        "projects": projects,
+        "tasks": tasks
     }
     return user_dict
 
 @users_routes.put("/users/{user_id}")
-def update_user(user_update: schemas.UserUpdate,user: User = Depends(get_current_user) , db: Session = Depends(get_db)):
+def update_user(user_update: schemas.UserUpdate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="User not found or no permission")
     
@@ -136,7 +188,7 @@ def update_user(user_update: schemas.UserUpdate,user: User = Depends(get_current
         "gender": user.gender if user.gender is not None else "",
         "DOB": user.DOB.isoformat() if user.DOB else None,
         "picture": user.picture if user.picture is not None else "",
-        "projects": [project.id for project in user.projects],
+        "projects": [project.id for project in user.assigned_projects],
         "assigned_tasks": [task.id for task in user.assigned_tasks]
     }
     return user_dict

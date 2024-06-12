@@ -11,12 +11,7 @@ from openai import OpenAI
 import os
 import json
 import re
-from sqlalchemy.orm import Session
 from datetime import datetime
-import schemas
-
-
-from database import get_db
 
 load_dotenv()
 
@@ -25,7 +20,7 @@ client = OpenAI(api_key=os.getenv("my_api_key"))
 projects_routes = APIRouter()
 
 @projects_routes.get("/get_projects")
-def get_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db) ):
+def get_projects(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user:
         raise HTTPException(status_code=404, detail="Invalid user credentials.")
     
@@ -34,16 +29,16 @@ def get_projects(user: User = Depends(get_current_user), db: Session = Depends(g
     return projects
 
 @projects_routes.get("/get_project/{project_id}")
-def get_project(project_id:str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_project(project_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not user:
-        raise HTTPException(status_code=501, detail="Unauthorized Access denied.")
+        raise HTTPException(status_code=401, detail="Unauthorized Access.")
     
     project = db.query(Project).filter(Project.id == project_id).first()
 
     if project:
         return organize_project(db=db, project_id=project_id)
 
-    raise HTTPException(status_code=404, detail="Project not foun.")
+    raise HTTPException(status_code=404, detail="Project not found.")
 
 @projects_routes.post("/create_project")
 def create_project(project: schemas.ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -52,7 +47,17 @@ def create_project(project: schemas.ProjectCreate, user: User = Depends(get_curr
     
     project_id = str(uuid4())
 
-    db_project = Project(id=project_id, name=project.name, description=project.description, date_start=project.date_start, date_end=project.date_end, priority=project.priority, finished=False, owner_id = user.id)
+    db_project = Project(
+        id=project_id,
+        name=project.name,
+        description=project.description,
+        date_start=project.date_start,
+        date_end=project.date_end,
+        priority=project.priority,
+        finished=False,
+        owner_id=user.id
+    )
+    db_project.assignees.append(user)  # Assign the project to the creator by default
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
@@ -69,7 +74,6 @@ def extract_tags(tasks):
     return list(unique_tags.values())
 
 def generate_prompt(description, start_date, end_date, priority, project_id, assignee_id):
-
     prompt = f"""
     Hello, I need your help in generating a schedule for my project. Here is the description of the project: {description}.
     I want it to start on {start_date} and end on {end_date}. The priority of the project is {priority}. The project_id is {project_id}, the assignee_id is {assignee_id}.
@@ -96,7 +100,7 @@ def generate_tasks(prompt):
       model="gpt-4",  
       messages=[
           {"role": "system", "content": "You are a helpful assistant that aids in planning projects."},
-          {"role":"user", "content":prompt}
+          {"role": "user", "content": prompt}
       ]
     )
     return response.choices[0].message.content
@@ -108,7 +112,7 @@ def create_tasks(description, start_date, end_date, priority, project_id, assign
         tasks_json_match = re.search(r'\[\s*{.*}\s*\]', data, re.DOTALL)
 
         if not tasks_json_match:
-            return {"message":"Invalid response format"}
+            return {"message": "Invalid response format"}
 
         tasks_json = tasks_json_match.group().strip()
 
@@ -140,18 +144,26 @@ def create_tasks(description, start_date, end_date, priority, project_id, assign
             return
         
         except json.JSONDecodeError as e:
-            return {'message':f"JSON decoding error: {e}"}
+            return {'message': f"JSON decoding error: {e}"}
 
     except Exception as e:
         print(str(e))
 
-
-
 @projects_routes.post("/create_project/ai")
-async def create_project(project: schemas.ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def create_project_ai(project: schemas.ProjectCreate, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     project_id = str(uuid4())
 
-    db_project = Project(id=project_id, name=project.name, description=project.description, date_start=project.date_start, date_end=project.date_end, priority=project.priority, finished=False, owner_id = user.id)
+    db_project = Project(
+        id=project_id,
+        name=project.name,
+        description=project.description,
+        date_start=project.date_start,
+        date_end=project.date_end,
+        priority=project.priority,
+        finished=False,
+        owner_id=user.id
+    )
+    db_project.assignees.append(user)  # Assign the project to the creator by default
     db.add(db_project)
     db.commit()
     db.refresh(db_project)
@@ -159,7 +171,6 @@ async def create_project(project: schemas.ProjectCreate, user: User = Depends(ge
 
     organised_project = organize_projects(db=db, owner_id=user.id)
     return organised_project
-
 
 @projects_routes.delete("/delete_project/{project_id}")
 def delete_project(project_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -172,4 +183,4 @@ def delete_project(project_id: str, user: User = Depends(get_current_user), db: 
 
     db.delete(project)
     db.commit()
-    return { "message":"Successfully deleted the project." }
+    return {"message": "Successfully deleted the project."}

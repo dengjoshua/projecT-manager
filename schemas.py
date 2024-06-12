@@ -1,15 +1,13 @@
 from pydantic import BaseModel, Field, validator
 from typing import List, Optional
 from datetime import datetime
-from uuid import UUID
 
 class TaskBase(BaseModel):
     name: str
     description: Optional[str] = None
     finished: bool = False
     date: datetime = Field(default_factory=datetime.utcnow)
-    tag_id: Optional[int] = None
-    assignee_id: Optional[UUID] = None
+    tag_id: Optional[str] = None
 
     @validator("date", pre=True, always=True)
     def validate_date(cls, value):
@@ -40,9 +38,10 @@ class TaskUpdate(TaskBase):
         return value
 
 class Task(TaskBase):
-    id: UUID
-    project_id: UUID
-    
+    id: str
+    project_id: str
+    assignees: List['User'] = []
+
     class Config:
         from_attributes = True
 
@@ -74,9 +73,10 @@ class ProjectUpdate(ProjectBase):
     pass
 
 class Project(ProjectBase):
-    id: UUID
-    owner_id: UUID
+    id: str
+    owner_id: str
     tasks: List[Task] = []
+    assignees: List['User'] = []
 
     class Config:
         from_attributes = True
@@ -89,7 +89,7 @@ class UserCreate(UserBase):
     password: Optional[str] = None
 
 class UserLogin(BaseModel):
-    email:str
+    email: str
     password: str
 
 class UserUpdate(UserBase):
@@ -124,11 +124,17 @@ class UserResponse(BaseModel):
     gender: Optional[str] = ""
     DOB: Optional[datetime] = None
     picture: Optional[str] = ""
-    projects: List[int] = Field(default_factory=list)
-    assigned_tasks: List[int] = Field(default_factory=list)
+    projects: List[str] = Field(default_factory=list)
+    assigned_tasks: List[str] = Field(default_factory=list)
 
     class Config:
         from_attributes = True
 
 class GoogleLoginData(BaseModel):
     token: str
+
+class EmailSchema(BaseModel):
+    subject: str
+    message: str
+    sender: str
+    receiver: str
